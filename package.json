@@ -1,7 +1,7 @@
 {
-  "name": "@oracle/offline-persistence-toolkit",
+  "name": "@fewzion/offline-persistence-toolkit",
   "title": "Offline Persistence Toolkit",
-  "version": "1.5.7",
+  "version": "1.5.8-beta.0",
   "description": "Offline Persistence Toolkit by Oracle Corp.",
   "author": "oraclejet",
   "license": "UPL-1.0",
@@ -14,7 +14,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/oracle/offline-persistence-toolkit"
+    "url": "https://github.com/Fewzion/offline-persistence-toolkit"
   },
   "keywords": [
     "offline",
