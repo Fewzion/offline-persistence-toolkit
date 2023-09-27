@@ -207,13 +207,13 @@ define(['require', '../persistenceUtils', '../persistenceStoreManager', './defau
                       statusCode = response.status;
 
                       // fail for HTTP error codes 4xx and 5xx
-                      if (statusCode >= 400) {
-                        reject({'error': response.statusText,
-                        'requestId': requestId,
-                          'request': requestClone.clone(),
-                          'response': response.clone()});
-                        return;
-                      }
+                      // if (statusCode >= 400) {
+                      //   reject({'error': response.statusText,
+                      //   'requestId': requestId,
+                      //     'request': requestClone.clone(),
+                      //     'response': response.clone()});
+                      //   return;
+                      // }
                       persistenceUtils._cloneResponse(response, {url: request.url}).then(function(responseClone) {
                         logger.log("Offline Persistence Toolkit PersistenceSyncManager: Dispatching syncRequest event");
                         _dispatchEvent(self, 'syncRequest', {'requestId': requestId,

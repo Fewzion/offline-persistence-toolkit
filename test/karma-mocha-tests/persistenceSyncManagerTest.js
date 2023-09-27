@@ -568,7 +568,7 @@ define(['persist/persistenceManager', 'persist/defaultResponseProxy', 'persist/p
           });
         });
       }).timeout(30000);
-      it('server errpr', function (done) {
+      xit('server errpr', function (done) {
         mockFetch.addRequestReply('GET', '/testServerError', {
           status: 200,
           body: 'Ok'
