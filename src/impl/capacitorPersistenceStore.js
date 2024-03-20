@@ -29,7 +29,7 @@ define(["./keyValuePersistenceStore", "./logger"],
       };
 
       var valueToStore = JSON.stringify(insertValue);
-      return this._storage.set(insertKey, valueToStore);
+      return this._storage.set({ key: insertKey, value: valueToStore });
     };
 
     CapacitorPersistenceStore.prototype.removeByKey = function (key) {
@@ -38,7 +38,7 @@ define(["./keyValuePersistenceStore", "./logger"],
       return self.findByKey(key).then(function(storageData) {
         if (storageData) {
           var insertKey = self._createRawKey(key);
-          return self._storage.remove(insertKey).then(function() {
+          return self._storage.remove({ key: insertKey }).then(function() {
             return Promise.resolve(true);
           });
         } else {
@@ -58,15 +58,15 @@ define(["./keyValuePersistenceStore", "./logger"],
       var allKeys = [];
       return self._storage.keys().then(function(allRawKeys) {
         var p = Promise.resolve();
-        allRawKeys.forEach(function(rawKey) {
+        allRawKeys.keys.forEach(function(rawKey) {
           if (rawKey.indexOf(prefix) === 0) {
             // when asked for keys, we need to return the saved original key,
             // which might not be a string typed value.
             p = p.then(function() {
-              return self._storage.get(rawKey).then(function(storageData) {
-                if (storageData) {
+              return self._storage.get({ key: rawKey }).then(function(storageData) {
+                if (storageData.value) {
                   try {
-                    var item = JSON.parse(storageData);
+                    var item = JSON.parse(storageData.value);
                     var key = item.key;
                     if (key) {
                       allKeys.push(key);
@@ -76,7 +76,7 @@ define(["./keyValuePersistenceStore", "./logger"],
                       allKeys.push(rawKey.slice(prefix.length));
                     }
                   } catch (err) {
-                    logger.log("data is not in valid JSON format: " + storageData);
+                    logger.log("data is not in valid JSON format: " + storageData.value);
                   }
                 }
               });
@@ -92,10 +92,10 @@ define(["./keyValuePersistenceStore", "./logger"],
     CapacitorPersistenceStore.prototype.getItem = function (key) {
       logger.log("Offline Persistence Toolkit capacitorPersistenceStore: getItem() with key: " + key);
       var insertKey = this._createRawKey(key);
-      return this._storage.get(insertKey).then(function(storageData) {
-        if (storageData) {
+      return this._storage.get({ key: insertKey }).then(function(storageData) {
+        if (storageData.value) {
           try {
-            var item = JSON.parse(storageData);
+            var item = JSON.parse(storageData.value);
             return Promise.resolve(item);
           } catch (err) {
             return Promise.resolve();
