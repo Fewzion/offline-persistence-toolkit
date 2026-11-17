@@ -320,6 +320,8 @@ define(["../PersistenceStore", "../impl/storageUtils", "pouchdb", "./logger"],
       var self = this;
       return self._fixValue(element).then(function (fixedDoc) {
         if (useDefaultField) {
+          // The stubs are only asked for by `_prepareFind`, for `_fixBinaryValue`.
+          delete fixedDoc._attachments;
           return fixedDoc;
         } else {
           return fixedDoc.value;
@@ -369,7 +371,9 @@ define(["../PersistenceStore", "../impl/storageUtils", "pouchdb", "./logger"],
     var self = this;
     var docId = key.toString();
 
-    return self._db.get(docId, {attachments: true}).then(function (doc) {
+    // Without `attachments: true`, which would inline each attachment as base64 only for
+    // `_fixBinaryValue` to read it again as a Blob. The document carries attachment stubs.
+    return self._db.get(docId).then(function (doc) {
       return self._fixBinaryValue(doc);
     }).then(function(fixedDoc) {
       return fixedDoc.value;
@@ -489,6 +493,16 @@ define(["../PersistenceStore", "../impl/storageUtils", "pouchdb", "./logger"],
       if (fields.indexOf('key') !== -1 && fields.indexOf('_id') === -1){
         modifiedExpression.fields.push('_id')
       }
+
+      // Binary data in the value is stored as attachments, which a projection drops. Keep
+      // their stubs whenever the value is asked for, so that `_fixBinaryValue` can put the
+      // binary data back.
+      var asksForValue = fields.some(function(field) {
+        return field === 'value' || field.indexOf('value.') === 0;
+      });
+      if (asksForValue && fields.indexOf('_attachments') === -1) {
+        modifiedExpression.fields.push('_attachments');
+      }
     }
     return modifiedExpression;
   };
@@ -527,7 +541,9 @@ define(["../PersistenceStore", "../impl/storageUtils", "pouchdb", "./logger"],
               value: itemValue
             };
             attachmentParts.push(attachment);
-            value.key = null;
+            // Leave the binary data out of the document itself: it is stored as an
+            // attachment, and is put back from there when the document is read.
+            value[key] = null;
           } else if (itemValue.length === undefined) {
             var oldPath = path;
             if (path.length > 0) {

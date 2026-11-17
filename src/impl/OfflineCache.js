@@ -151,10 +151,9 @@ define(["./defaultCacheHandler", "../persistenceStoreManager", "../persistenceUt
         });
         return Promise.all(promises);
       } else {
-        // get the cache entries based on search criteria.
-        var searchCriteria = cacheHandler.constructSearchCriteria(request, options);
-        searchCriteria['fields'] = ['key', 'value'];
-        return store.find(searchCriteria);
+        // `_cacheKeys` holds the key of every entry in the store, so no match among them is
+        // no match at all. Searching the store as well would read every entry for nothing.
+        return [];
       }
     });
   };
@@ -195,9 +194,8 @@ define(["./defaultCacheHandler", "../persistenceStoreManager", "../persistenceUt
           });
         });
       } else {
-        var searchCriteria = cacheHandler.constructSearchCriteria(request, options);
-        searchCriteria['fields'] = ['key', 'value'];
-        return store.find(searchCriteria);
+        // As in `_getCacheEntries`.
+        return [];
       }
     }).then(function (cacheEntries) {
       if (!cacheEntries) {
