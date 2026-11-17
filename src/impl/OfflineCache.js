@@ -651,9 +651,10 @@ define(["./defaultCacheHandler", "../persistenceStoreManager", "../persistenceUt
         });
       } else {
         // no shredder, deleting cache entries is sufficient.
-        return _getStoreKeys(cacheStore, request, options).then(function(keysArray) {
-          if (keysArray && keysArray.length) {
-            var promisesArray = keysArray.map(function(key) {
+        return self._getMatchingEntries(request, options).then(function(entries) {
+          if (entries.length) {
+            var promisesArray = entries.map(function(entry) {
+              var key = entry.key;
               var index = self._cacheKeys.indexOf(key);
               if (index >= 0) {
                 self._cacheKeys.splice(index, 1);
@@ -711,44 +712,43 @@ define(["./defaultCacheHandler", "../persistenceStoreManager", "../persistenceUt
       logger.log("Offline Persistence Toolkit OfflineCache: keys()");
     }
     var self = this;
-    return self._getStore().then(function() {
-      return _getStoreKeys(self._store, request, options);
-    }).then(function(keysArray) {
-      var requestsPromiseArray = [];
-      keysArray.forEach(function(key) {
-        requestsPromiseArray.push(self._store.findByKey(key).then(function(entry) {
-          return persistenceUtils.requestFromJSON(entry.requestData);
+    return self._getStore().then(function(store) {
+      if (request) {
+        return self._getMatchingEntries(request, options).then(function(entries) {
+          return entries.map(function(entry) {
+            return entry.value;
+          });
+        });
+      }
+      // no passed-in request to match, so returns ALL requests objects in
+      // the persistence store.
+      return store.keys().then(function(keysArray) {
+        return Promise.all(keysArray.map(function(key) {
+          return store.findByKey(key);
         }));
       });
-      return Promise.all(requestsPromiseArray);
+    }).then(function(values) {
+      return Promise.all(values.map(function(value) {
+        return persistenceUtils.requestFromJSON(value.requestData);
+      }));
     }).catch(function(error) {
-      logger.log("Offline Persistence Toolkit OfflineCache: keys() error for Request with url: " + request.url);
+      logger.log("Offline Persistence Toolkit OfflineCache: keys() error for Request with url: " + (request && request.url));
       return [];
     });
   };
 
-  function _getStoreKeys(store, request, options) {
-    if (request) {
-      // need to match with the passed-in request.
-      var searchCriteria = cacheHandler.constructSearchCriteria(request, options);
-      searchCriteria.fields = ['key', 'value'];
-
-      var ignoreVary = (options && options.ignoreVary);
-
-      return store.find(searchCriteria).then(function (dataArray) {
-        if (dataArray && dataArray.length) {
-          var filteredEntries = dataArray.filter(_filterByVary(ignoreVary, request, 'value'));
-          var keysArray = filteredEntries.map(function (entry) { return entry.key;});
-          return keysArray;
-        } else {
-          return [];
-        }
-      });
-    } else {
-      // no passed-in request to match, so returns ALL requests objects in
-      // the persistence store.
-      return store.keys();
-    }
+  // The entries that match the request, Vary headers included, as {key, value}. Matched against
+  // `_cacheKeys`, which holds the key of every entry, so that only the matching entries are read:
+  // searching the store with `find` would read every entry, as no index the find plugin can use
+  // fits these searches.
+  OfflineCache.prototype._getMatchingEntries = function (request, options) {
+    var ignoreVary = (options && options.ignoreVary);
+    return this._getCacheEntries(request, options).then(function(entries) {
+      return entries.filter(function(entry) {
+        // An entry deleted from the store since its key was listed.
+        return !!entry.value;
+      }).filter(_filterByVary(ignoreVary, request, 'value'));
+    });
   };
 
   /**
